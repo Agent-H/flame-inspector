@@ -60,25 +60,22 @@ public class Worker {
 		generateRandom(seedsPtr, Config.KERNELS_COUNT);
         CLBuffer<Long> seeds = context.createBuffer(Usage.Input, seedsPtr);
         
-        computeKernel.setArgs(
-        		seeds, 
-        		map, 
-        		intensities, 
-        		Config.CHUNK_WIDTH, 
-        		Config.CHUNK_HEIGHT, 
-        		transformsBuffer, 
-        		fractal.getNbTransforms(), 
-        		random_life, 
-        		pointsBuffer );
-        
-        
         System.out.println("Plotting...");
         int percent = 0;
         CLEvent computeEvt;
         
         //Calcul de la fractale avec l'algorithme du chaos
         for(int i = 0 ; i < density ; i++){
-        	
+        	computeKernel.setArgs(
+            		seeds, 
+            		map, 
+            		intensities, 
+            		Config.CHUNK_WIDTH, 
+            		Config.CHUNK_HEIGHT, 
+            		transformsBuffer, 
+            		fractal.getNbTransforms(), 
+            		random_life, 
+            		pointsBuffer );
 	        computeEvt = computeKernel.enqueueNDRange(queue, new int[] { Config.KERNELS_COUNT });
 	        
 	        if(i < density-1){

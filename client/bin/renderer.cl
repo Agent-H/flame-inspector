@@ -55,11 +55,11 @@ __kernel void compute(
 		cy = y;
 		transformPoint(&transforms[transf_n*SIZEOF_TRANSFORM], &cx, &cy);
 		
+		color = (color + transforms[transformID*SIZEOF_TRANSFORM+COLOR_INDEX_POS])/2;
+		
 		if(cx >= 0 && cy >= 0 && cx < outWidth && cy < outHeight){
 			//then hit
 			int pos = (outHeight -1 - (int)floor(cy)) * outWidth + (int)floor(cx);
-			
-			color = (color + transforms[transformID*SIZEOF_TRANSFORM+COLOR_INDEX_POS])/2;
 			
 			if(intensities[pos] < 2147483647){
 				int intensity = intensities[pos];

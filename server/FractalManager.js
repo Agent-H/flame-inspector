@@ -6,8 +6,9 @@ var Manager = function(){
 	
 	var _this = this;
 	
-	var fractal = this.fractal = new Fractal(0, 1000);
+	var fractal = this.fractal = new Fractal(1, 200000);
 	
+	/*
 	fractal.addTransform(
 			[-0.4113504, -0.7124804, -0.4, 0.7124795, -0.4113508, 0.8],
 			[1, 0.1, 0, 0, 0, 0],
@@ -29,8 +30,34 @@ var Manager = function(){
 	};
 	
 	var divisions = {
-		x: 5,
-		y: 4
+		x: 10,
+		y: 8
+	};*/
+	
+	fractal.addTransform(
+			[0.7124807, -0.4113509, -0.3, 0.4113513, 0.7124808, -0.7],
+    		[0.5, 0, 0, 0.4, 0, 0],
+			0 );
+	
+    fractal.addTransform(
+			[0.3731079, -0.6462417, 0.4, 0.6462414, 0.3731076, 0.3],
+    		[1, 0, 0.1, 0, 0, 0],
+			1 );
+    fractal.addTransform(
+			[0.0842641, -0.314478, 0.1, 0.314478, 0.0842641, 0.3],
+    		[1, 0, 0, 0, 0, 0],
+			0.5 );
+    
+	var viewport = {
+		width: 3,
+		height: 3,
+		centerX: 0.1,
+		centerY: 0.1
+	};
+	
+	var divisions = {
+		x: 12,
+		y: 12
 	};
 	
 	var chunkWidth = viewport.width/divisions.x;
