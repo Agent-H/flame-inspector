@@ -130,7 +130,7 @@ module.exports = function(fractalManager){
 		//Polls for a new job
 		pollJob();
 		
-	}).listen(PORT, HOST);
+	}).listen(PORT);
 
 	console.log('Net server listening on ' + HOST +':'+ PORT);
 };

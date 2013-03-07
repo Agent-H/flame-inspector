@@ -25,8 +25,8 @@ public class Client {
 		
         try {
         	
-        	_port   = (args.length > 0) ? Integer.parseInt(args[0]) : 5000;
-    	 	_addr = (args.length > 1) ? args[1] : "127.0.0.1";
+        	_port   = (args.length > 1) ? Integer.parseInt(args[1]) : 5000;
+    	 	_addr = (args.length > 0) ? args[0] : "127.0.0.1";
     	 	
     	 	System.out.println("Connecting to "+_addr+" on port "+_port);
     	 	
