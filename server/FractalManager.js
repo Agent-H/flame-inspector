@@ -6,8 +6,8 @@ var Manager = function(){
 	
 	var _this = this;
 	
-	var CHUNK_SIZE = this.CHUNK_SIZE = 8192;
-	var IMG_PER_CHUNK = this.IMG_PER_CHUNK = 32*32;
+	var CHUNK_SIZE = this.CHUNK_SIZE = 4096;
+	var IMG_PER_CHUNK = this.IMG_PER_CHUNK = 16*16;
 	
 	var fractal = this.fractal = new Fractal(2, 200000);
 	
