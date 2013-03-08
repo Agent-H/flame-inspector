@@ -17,6 +17,7 @@ module.exports = function(fractalManager){
 		var currentLength = 0;
 		var bufferedHeader = new Buffer(4);
 		var headerCount = 0;
+		var imageCount = 0;
 		
 		
 		clients.push(sock);
@@ -58,45 +59,55 @@ module.exports = function(fractalManager){
 		function writeData(data, sourceStart){
 			if(typeof(sourceStart) == 'undefined') sourceStart = 0
 			
-			data.copy(chunk.data, currentLength, sourceStart);
+			data.copy(chunk.images[imageCount], currentLength, sourceStart);
 			
 			currentLength += data.length-sourceStart;
 			
-			console.log("data length :"+outputLength+" current length : "+currentLength);
 			if(currentLength == outputLength){
-				console.log("End of download");
-				fractalManager.saveChunk(chunk);
-				chunk = null;
+				
 				outputLength = 0;
 				currentLength = 0;
-				pollJob();
+				
+				imageCount ++;
+				if(imageCount == fractalManager.IMG_PER_CHUNK){
+					console.log("End of download");
+					imageCount = 0;
+					fractalManager.saveChunk(chunk);
+					chunk = null;
+					
+					pollJob();
+				} else {
+					if(imageCount == 1)
+						console.log("Receiving images");
+				}
 			}
 		}
 		
 		// Add a 'data' event handler to this instance of socket
 		sock.on('data', function(data) {
 			
-			//TODO
 			if(chunk !== null){
 				if(outputLength == 0){
+					
+					//Receiving image header (size)
 					if(data.length+headerCount < 4){
 						data.copy(bufferedHeader, headerCount);
 						headerCount += data.length;
 					} else if(headerCount != 0){
 						data.copy(bufferedHeader, headerCount, 0, 4-headerCount);
 						
-						console.log("received new image (fragmented header)");
 						outputLength = bufferedHeader.readInt32BE(0);
-						chunk.data = new Buffer(outputLength);
+						chunk.images[imageCount] = new Buffer(outputLength);
 						
 						writeData(data, 4-headerCount);
 						
 						headerCount = 0;
-					} else {
+					} 
+					//receiving image data
+					else {
 						
-						console.log("received new image");
 						outputLength = data.readInt32BE(0);
-						chunk.data = new Buffer(outputLength);
+						chunk.images[imageCount] = new Buffer(outputLength);
 						
 						writeData(data, 4);
 					}

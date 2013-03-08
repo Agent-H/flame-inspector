@@ -6,7 +6,10 @@ var Manager = function(){
 	
 	var _this = this;
 	
-	var fractal = this.fractal = new Fractal(1, 200000);
+	var CHUNK_SIZE = this.CHUNK_SIZE = 8192;
+	var IMG_PER_CHUNK = this.IMG_PER_CHUNK = 32*32;
+	
+	var fractal = this.fractal = new Fractal(2, 200000);
 	
 	/*
 	fractal.addTransform(
@@ -35,17 +38,17 @@ var Manager = function(){
 	};*/
 	
 	fractal.addTransform(
-			[0.7124807, -0.4113509, -0.3, 0.4113513, 0.7124808, -0.7],
-    		[0.5, 0, 0, 0.4, 0, 0],
+			[-0.4113504, -0.7124804, -0.4, 0.7124795, -0.4113508, 0.8],
+    		[1, 0.1, 0.1, 0, 0, 0],
 			0 );
 	
     fractal.addTransform(
-			[0.3731079, -0.6462417, 0.4, 0.6462414, 0.3731076, 0.3],
-    		[1, 0, 0.1, 0, 0, 0],
+			[-0.3957339, 0.12, -1.6, 0.12, -0.3957337, 0.2],
+    		[0.1, 0, 0, 0, 0.8, 1],
 			1 );
     fractal.addTransform(
-			[0.0842641, -0.314478, 0.1, 0.314478, 0.0842641, 0.3],
-    		[1, 0, 0, 0, 0, 0],
+			[0.4810169, 0, 1, 0.456, 0.4810169, 0.9],
+    		[1, 0, 0, 0.3, 0, 0],
 			0.5 );
     
 	var viewport = {
@@ -56,8 +59,8 @@ var Manager = function(){
 	};
 	
 	var divisions = {
-		x: 12,
-		y: 12
+		x: 4,
+		y: 4
 	};
 	
 	var chunkWidth = viewport.width/divisions.x;
@@ -98,7 +101,7 @@ var Manager = function(){
 					y: y*chunkHeight + viewport.centerY - viewport.height/2,
 					chunkX: x,
 					chunkY: y,
-					data: ''
+					images: new Array(IMG_PER_CHUNK)
 				};
 			}
 		}
@@ -124,16 +127,24 @@ var Manager = function(){
 		var x = chunk.chunkX;
 		var y = chunk.chunkY;
 		
-		fs.writeFile("data/"+_this.fractal.getId()+"/"+x+"-"+y+".png", chunk.data, function(err){
-			if(err){
-				console.log("an error has occured : ");
-				console.log(err);
-				//En cas d'erreur, on libère le chunk pour être recalculé
-				unlockChunk(chunk);
-			} else {
-				console.log("Data successfully saved");
-			}
-		});
+		function saveImage(id){
+			fs.writeFile("data/"+_this.fractal.getId()+"/0-"+x+"-"+y+"-"+id+".png", chunk.images[id], function(err){
+				if(err){
+					console.log("an error has occured : ");
+					console.log(err);
+					//En cas d'erreur, on libère le chunk pour être recalculé
+					unlockChunk(chunk);
+				} else {
+					if(id < IMG_PER_CHUNK-1)
+						saveImage(id+1);
+					else
+						console.log("Data successfully saved");
+				}
+			});
+		}
+		
+		saveImage(0);
+		
 	}
 	
 	
@@ -163,19 +174,38 @@ var Manager = function(){
 				_this.emit('error', 'A filesystem error occured');
 			}
 		} else {
-		
+			
+			// Recence les images présentes
+			var images = new Array(chunksCount*IMG_PER_CHUNK);
+			
 			for(var i = 0 ; i < files.length ; i++){
 				
-				var x = parseInt(files[i].replace(/([0-9]+)-[0-9]+\.png/, '$1'));
-				var y = parseInt(files[i].replace(/[0-9]+-([0-9]+)\.png/, '$1'));
+				var infos = files[i].replace(/0-([0-9]+)-([0-9]+)-([0-9]+)\.png/, '$1 $2 $3').split(' ');
+				var x = parseInt(infos[0]);
+				var y = parseInt(infos[1]);
+				var number = parseInt(infos[2]);
 				
-				chunkLock[y*divisions.x+x] = true;
+				images[(y*divisions.x+x)*IMG_PER_CHUNK + number] = true;
 			}
 			
 			for(var i = 0 ; i < chunksCount ; i++){
-				if(chunkLock[i] !== true){
+				if(
+					(function(i){
+						console.log("checking chunk "+i);
+						var count = 0;
+						for(var j = 0 ; j < IMG_PER_CHUNK ; j++){
+							if(images[i*IMG_PER_CHUNK+j] === true)
+								count ++;
+						}
+						console.log("Image count : "+count);
+						return count != IMG_PER_CHUNK;
+					})(i)
+				){
+					console.log("chunk is available");
 					chunkLock[i] = false;
 					availableChunks++;
+				} else {
+					chunkLock[i] = true;
 				}
 			}
 			

@@ -1,5 +1,6 @@
 package com.agenth.flameinspector;
 
+import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -47,7 +48,7 @@ public class Client {
             	BufferedImage img = Worker.compute(_fractal, _density);
             	
             	System.out.println("Sending image");
-            	sendImage(output, img);
+            	sendImages(output, img);
             }
         	
 		} catch (IOException e) {
@@ -65,6 +66,25 @@ public class Client {
             }
 		}
 
+	}
+	
+	public static void sendImages(DataOutputStream output, BufferedImage image) throws IOException {
+
+		for (int x = 0; x < Config.IMAGE_COUNT_X ; x++) {  
+            for (int y = 0; y < Config.IMAGE_COUNT_Y ; y++) {
+            	
+                //Initialize the image array with image chunks  
+                BufferedImage imgOut = new BufferedImage(Config.IMAGE_SIZE, Config.IMAGE_SIZE, image.getType());  
+  
+                // draws the image chunk  
+                Graphics2D gr = imgOut.createGraphics();  
+                gr.drawImage(image, 0, 0, Config.IMAGE_SIZE, Config.IMAGE_SIZE, 
+                		Config.IMAGE_SIZE * x, Config.IMAGE_SIZE * y, (Config.IMAGE_SIZE) * (x+1), (Config.IMAGE_SIZE) * (y+1), null);  
+                gr.dispose();
+                
+                sendImage(output, imgOut);
+            }  
+        }
 	}
 	
 	public static void sendImage(DataOutputStream output, BufferedImage image) throws IOException{

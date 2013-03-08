@@ -96,6 +96,8 @@ public class Worker {
         seedsPtr.release();
 	    transformsBuffer.release();
 	    
+	    System.gc();
+	    
 	    //Calcul de la luminosité maximale
 	    int max = 0;
         for(int i = 0 ; i < Config.CHUNK_WIDTH*Config.CHUNK_HEIGHT ; i++){
@@ -112,13 +114,17 @@ public class Worker {
         mapPtr = map.read(queue);
         
         
-        //TEST UNIT : rendu du png
+        //Rendu du png
         System.out.println("Generating png..");
 
 		int[] imgbytes = new int[Config.CHUNK_WIDTH*Config.CHUNK_HEIGHT];
 		
 		List<Color> c = new ArrayList<Color>();
-		c.add(Color.RED); c.add(Color.GREEN); c.add(Color.BLUE);
+		c.add(new Color(1, 0, 0.513725));
+		c.add(new Color(0.047058, 0.815683, 0.968627));
+		c.add(new Color(0, 1, 0.227451));
+		c.add(new Color(0.874509, 1, 0));
+		c.add(new Color(1, 0.584313, 0));
 		Palette palette = new InterpolatedPalette(c);
 		
 		Color colorMix = new Color(0,0,0);
@@ -131,7 +137,7 @@ public class Worker {
 		
 		intensitiesPtr.release();
 		mapPtr.release();
-
+		
 		WritableRaster raster = Raster.createPackedRaster(DataBuffer.TYPE_INT, Config.CHUNK_WIDTH, Config.CHUNK_HEIGHT, 3, 8, null);
 		raster.setDataElements(0, 0, Config.CHUNK_WIDTH, Config.CHUNK_HEIGHT, imgbytes);
 
