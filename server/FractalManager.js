@@ -7,9 +7,12 @@ var Manager = function(){
 	var _this = this;
 	
 	var CHUNK_SIZE = this.CHUNK_SIZE = 4096;
-	var IMG_PER_CHUNK = this.IMG_PER_CHUNK = 16*16;
+	var IMG_PER_CHUNK_ROW = this.IMG_PER_CHUNK_ROW = 16;
+	var IMG_PER_CHUNK = this.IMG_PER_CHUNK = IMG_PER_CHUNK_ROW*IMG_PER_CHUNK_ROW;
 	
-	var fractal = this.fractal = new Fractal(2, 200000);
+	var DATA_DIR = "../www/data/";
+	
+	var fractal = this.fractal = new Fractal(2, 20000);
 	
 	/*
 	fractal.addTransform(
@@ -128,7 +131,10 @@ var Manager = function(){
 		var y = chunk.chunkY;
 		
 		function saveImage(id){
-			fs.writeFile("data/"+_this.fractal.getId()+"/0-"+x+"-"+y+"-"+id+".png", chunk.images[id], function(err){
+			fs.writeFile(DATA_DIR+_this.fractal.getId()+"/0-"
+				+(x*IMG_PER_CHUNK_ROW + id % IMG_PER_CHUNK_ROW)+"-"
+				+ (y*IMG_PER_CHUNK_ROW + IMG_PER_CHUNK_ROW - 1 - Math.floor(id / IMG_PER_CHUNK_ROW))
+				+".png", chunk.images[id], function(err){
 				if(err){
 					console.log("an error has occured : ");
 					console.log(err);
@@ -157,7 +163,7 @@ var Manager = function(){
 	var availableChunks = 0;
 	
 	/* Scans for existing chunks */
-	fs.readdir("data/"+this.fractal.getId(), function(err, files){
+	fs.readdir(DATA_DIR+this.fractal.getId(), function(err, files){
 		
 		//fractal not yet created
 		if(err != null){
@@ -165,7 +171,7 @@ var Manager = function(){
 				for(var i = 0 ; i < chunksCount ; i++){
 					chunkLock[i] = false;
 				}
-				fs.mkdir("data/"+_this.fractal.getId(), function(){
+				fs.mkdir(DATA_DIR+_this.fractal.getId(), function(){
 					availableChunks = chunksCount;
 					_ready = true;
 					_this.emit('ready');
@@ -180,31 +186,30 @@ var Manager = function(){
 			
 			for(var i = 0 ; i < files.length ; i++){
 				
-				var infos = files[i].replace(/0-([0-9]+)-([0-9]+)-([0-9]+)\.png/, '$1 $2 $3').split(' ');
+				var infos = files[i].replace(/0-([0-9]+)-([0-9]+)\.png/, '$1 $2').split(' ');
 				var x = parseInt(infos[0]);
 				var y = parseInt(infos[1]);
-				var number = parseInt(infos[2]);
 				
-				images[(y*divisions.x+x)*IMG_PER_CHUNK + number] = true;
+				images[Math.floor(x/IMG_PER_CHUNK_ROW)*IMG_PER_CHUNK + y * IMG_PER_CHUNK_ROW + x % IMG_PER_CHUNK_ROW] = true;
 			}
 			
 			for(var i = 0 ; i < chunksCount ; i++){
 				if(
 					(function(i){
-						console.log("checking chunk "+i);
 						var count = 0;
 						for(var j = 0 ; j < IMG_PER_CHUNK ; j++){
 							if(images[i*IMG_PER_CHUNK+j] === true)
 								count ++;
 						}
-						console.log("Image count : "+count);
+						console.log("Chunk "+i+" Image count : "+count);
 						return count != IMG_PER_CHUNK;
 					})(i)
 				){
-					console.log("chunk is available");
+					console.log("Chunk "+i+" is empty");
 					chunkLock[i] = false;
 					availableChunks++;
 				} else {
+					console.log("Chunk "+i+" is complete");
 					chunkLock[i] = true;
 				}
 			}

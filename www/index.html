@@ -1,0 +1,205 @@
+﻿<html>
+
+<head>
+	<title>Flame inspector</title>
+	
+	<link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+	<div id="viewer">
+	</div>
+	
+	<script src="jquery-1.9.1.min.js" ></script>
+	
+	<script>
+		$(function(){
+			var viewer = $('#viewer');
+			
+			var TILE_SIZE = 256;
+			var TILE_PER_CHUNK = 16;
+			var CHUNK_COUNT = 64;
+			
+			var FRACTAL_ID = 2;
+			
+			var zoomLevel = 0;
+			
+			var viewport = {
+				x: 2000,
+				y: 1000,
+				w: viewer.width(),
+				h: viewer.height()
+			};
+			
+			var map = new function(){
+				
+				var tiles = new Array();
+				
+				var offset = {
+					left: 0,
+					top: 0,
+					right: 0,
+					bottom: 0
+				};
+				
+				function loadTile(x, y, z){
+					
+					var img = new Image();
+					img.src = "data/"+FRACTAL_ID+"/"+z+"-"+x+"-"+(CHUNK_COUNT-1-y)+".png";
+					
+					return $(img).width(256).height(256).addClass("tile");
+				}
+				
+				this.init = function(viewport){
+				
+					offset.left = Math.floor(viewport.x / TILE_SIZE)-1;
+					offset.right = Math.floor((viewport.x + viewport.w) / TILE_SIZE)+1;
+					offset.top = Math.floor(viewport.y / TILE_SIZE)-1;
+					offset.bottom = Math.floor((viewport.y + viewport.h) / TILE_SIZE)+1;
+					
+					for(var i = 0 ; i <= Math.floor(viewport.w / TILE_SIZE) +3 ; i++){
+						var tX = offset.left + i;
+						
+						tiles[i] = new Array();
+						
+						for(var j = 0 ; j <= Math.floor(viewport.h / TILE_SIZE) +3 ; j++){
+							var tY = offset.top + j;
+							
+							tiles[i][j] = loadTile(tX, tY, 0);
+							
+							viewer.append(tiles[i][j]);
+						}
+					}
+					
+					this.move(viewport);
+				};
+				
+				this.move = function(viewport){
+					
+					checkStreamming(viewport);
+					
+					var startX = (Math.floor(viewport.x / TILE_SIZE) - offset.left);
+					var startY = (Math.floor(viewport.y / TILE_SIZE) - offset.top);
+					
+					for(var i = 0 ; i < tiles.length ; i++){
+						for(var j = 0 ; j < tiles[i].length ; j++){
+							tiles[i][j].offset({
+								left: (i-startX)*TILE_SIZE - viewport.x % TILE_SIZE,
+								top: (j-startY)*TILE_SIZE - viewport.y % TILE_SIZE
+							});
+						}
+					}
+				};
+				
+				function loadColumn(pos){
+					var col = new Array();
+					
+					for(var i = 0 ; i < tiles[0].length ; i++){
+						col.push(loadTile(offset.left + pos, offset.top + i, 0).appendTo(viewer));
+					}
+					
+					tiles.splice(pos, 0, col);
+				}
+				
+				function removeColumn(pos){
+					var col = tiles[pos];
+					for(var i = 0 ; i < col.length ; i++){
+						col[i].detach();
+					}
+					tiles.splice(pos, 1);
+				}
+				
+				function removeLine(pos){
+					for(var i = 0 ; i < tiles.length ; i++){
+						tiles[i][pos].detach();
+						tiles[i].splice(pos, 1);
+					}
+				}
+				
+				function loadLine(pos){
+					for(var i = 0 ; i < tiles.length ; i++){
+						tiles[i].splice(pos, 0, loadTile(offset.left + i, offset.top + pos, 0).appendTo(viewer));
+					}
+				}
+				
+				function checkStreamming(viewport){
+					if(Math.floor(viewport.x / TILE_SIZE) < offset.left +1){
+						console.log("underflow x");
+						
+						offset.left --;
+						offset.right --;
+						
+						removeColumn(tiles.length-1);
+						loadColumn(0);
+						
+					} else if(Math.floor((viewport.x + viewport.w) / TILE_SIZE) > offset.right -1){
+						console.log("overflow x");
+						
+						offset.left ++;
+						offset.right ++;
+						
+						removeColumn(0);
+						loadColumn(tiles.length);
+					}
+					
+					if(Math.floor(viewport.y / TILE_SIZE) < offset.top +1){
+						console.log("underflow y");
+						
+						offset.top --;
+						offset.bottom --;
+						
+						removeLine(tiles[0].length - 1);
+						loadLine(0);
+						
+					} else if(Math.floor((viewport.y + viewport.h) / TILE_SIZE) > offset.bottom -1){
+						console.log("overflow y");
+						
+						offset.top ++;
+						offset.bottom ++;
+						
+						removeLine(0);
+						loadLine(tiles[0].length);
+					}
+				}
+			};
+			
+			var moveX = 0;
+			var moveY = 0;
+			
+			$(window).keydown(function(evt){
+				switch(evt.which){
+					case 37:
+						if(moveX > -10) moveX --;
+						break;
+					case 38:
+						if(moveY < 10) moveY ++;
+						break;
+					case 39:
+						if(moveX < 10) moveX ++;
+						break;
+					case 40:
+						if(moveY > -10) moveY --;
+						break;
+				}
+			}).keyup(function(evt){
+				if(evt.which == 37 && moveX < 0) moveX = 0;
+				else if(evt.which == 39 && moveX > 0) moveX = 0;
+				if(evt.which == 38 && moveY > 0) moveY = 0;
+				if(evt.which == 40 && moveY < 0) moveY = 0;
+			});
+			
+			window.setInterval(function(){
+				viewport.x += moveX
+				viewport.y += moveY;
+				
+				if(moveX != 0 || moveY != 0)
+					map.move(viewport);
+			}, 30);
+			
+			map.init(viewport);
+			
+		});
+	</script>
+</body>
+
+</html>

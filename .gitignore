@@ -1,7 +1,7 @@
 ﻿*.png
 *.class
 server/node_modules/*
-server/data/*
+www/data/*
 client/.settings/*
 *.classpath
 *.project

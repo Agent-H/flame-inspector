@@ -70,8 +70,8 @@ public class Client {
 	
 	public static void sendImages(DataOutputStream output, BufferedImage image) throws IOException {
 
-		for (int x = 0; x < Config.IMAGE_COUNT_X ; x++) {  
-            for (int y = 0; y < Config.IMAGE_COUNT_Y ; y++) {
+		for (int y = 0; y < Config.IMAGE_COUNT_Y ; y++) {  
+            for (int x = 0; x < Config.IMAGE_COUNT_X ; x++) {
             	
                 //Initialize the image array with image chunks  
                 BufferedImage imgOut = new BufferedImage(Config.IMAGE_SIZE, Config.IMAGE_SIZE, image.getType());  
