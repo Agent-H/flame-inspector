@@ -67,40 +67,59 @@ public class Client {
 		}
 
 	}
+
 	
 	public static void sendImages(DataOutputStream output, BufferedImage image) throws IOException {
-
-		for (int y = 0; y < Config.IMAGE_COUNT_Y ; y++) {  
-            for (int x = 0; x < Config.IMAGE_COUNT_X ; x++) {
-            	
-                //Initialize the image array with image chunks  
-                BufferedImage imgOut = new BufferedImage(Config.IMAGE_SIZE, Config.IMAGE_SIZE, image.getType());  
-  
-                // draws the image chunk  
-                Graphics2D gr = imgOut.createGraphics();  
-                gr.drawImage(image, 0, 0, Config.IMAGE_SIZE, Config.IMAGE_SIZE, 
-                		Config.IMAGE_SIZE * x, Config.IMAGE_SIZE * y, (Config.IMAGE_SIZE) * (x+1), (Config.IMAGE_SIZE) * (y+1), null);  
-                gr.dispose();
-                
-                sendImage(output, imgOut);
-            }  
-        }
+		
+		for(int z = 0 ; z < Config.ZOOM_PER_CHUNK ; z++){
+			for (int y = 0; y < Config.IMAGE_PER_CHUNK_LEVEL_ROW(z) ; y++) {
+	            for (int x = 0; x < Config.IMAGE_PER_CHUNK_LEVEL_ROW(z) ; x++) {
+	            	
+	                //Initialize the image array with image chunks  
+	                BufferedImage imgOut = new BufferedImage(Config.IMAGE_SIZE, Config.IMAGE_SIZE, image.getType());  
+	  
+	                // draws the image chunk  
+	                Graphics2D gr = imgOut.createGraphics();  
+	                gr.drawImage(image, 0, 0, Config.IMAGE_SIZE, Config.IMAGE_SIZE, 
+	                		(int)(Config.IMAGE_SIZE * x * Math.pow(2, z)),
+	                		(int)(Config.IMAGE_SIZE * y * Math.pow(2, z)),
+	                		(int)(Config.IMAGE_SIZE * (x+1) * Math.pow(2, z)),
+            				(int)(Config.IMAGE_SIZE * (y+1) * Math.pow(2, z)),
+	                		null);
+	                
+	                gr.dispose();
+	                
+	                sendImage(output, imgOut, x, y, z);
+	            }
+	        }
+		}
+		
+		output.writeByte(Config.OPCODE_ENDOFDATA);
+		//Header padding
+		output.writeInt(0);
+		output.writeInt(0);
+		output.writeInt(0);
+		output.writeInt(0);
 	}
 	
-	public static void sendImage(DataOutputStream output, BufferedImage image) throws IOException{
+	public static void sendImage(DataOutputStream output, BufferedImage image, int x, int y, int z) throws IOException{
 		ByteArrayOutputStream tmp = new ByteArrayOutputStream();
         
 		/*
 		 * We have to write the image one first time to get it's size,
 		 * then rewrite it to the socket.
 		 */
-		ImageIO.write(image, "png", tmp);
+		ImageIO.write(image, "jpeg", tmp);
         tmp.close();
         Integer contentLength = tmp.size();
         
+        output.writeByte(Config.OPCODE_IMAGE);
         output.writeInt(contentLength);
+        output.writeInt(x);
+        output.writeInt(y);
+        output.writeInt(z);
         
-        ImageIO.write(image, "png", output);
+        ImageIO.write(image, "jpeg", output);
 	}
 	
 	//Blocks until it receives a command from the server.

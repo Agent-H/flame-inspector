@@ -13,11 +13,22 @@ module.exports = function(fractalManager){
 		var _this = this;
 		var chunk = null;
 		
-		var outputLength = 0;
+		var OPCODE_IMAGE = 0x01;
+		var OPCODE_ENDOFDATA = 0x02;
+		
+		var HEADER_SIZE = 17;
+		var infos = {
+			length: 0,
+			x: 0,
+			y: 0,
+			z: 0,
+			op: 'end'
+		};
 		var currentLength = 0;
-		var bufferedHeader = new Buffer(4);
+		var bufferedHeader = new Buffer(HEADER_SIZE);
 		var headerCount = 0;
 		var imageCount = 0;
+		var zoom = 0;
 		
 		
 		clients.push(sock);
@@ -56,29 +67,94 @@ module.exports = function(fractalManager){
 			}
 		};
 		
-		function writeData(data, sourceStart){
-			if(typeof(sourceStart) == 'undefined') sourceStart = 0
+		function readHeader(header, start){
+			if(typeof(start) == 'undefined') start = 0;
 			
-			data.copy(chunk.images[imageCount], currentLength, sourceStart);
+			var opcode = header.readUInt8(start);
 			
-			currentLength += data.length-sourceStart;
+			if(opcode == OPCODE_IMAGE){
+				if(infos.op == 'end')
+					console.log("receiving images");
+					
+				infos.op = 'img';
 			
-			if(currentLength == outputLength){
+				infos.length = header.readInt32BE(start + 1);
+				infos.x = header.readInt32BE(start + 5);
+				infos.y = header.readInt32BE(start + 9);
+				infos.z = header.readInt32BE(start + 13);
 				
-				outputLength = 0;
+			} else if(opcode == OPCODE_ENDOFDATA){
+				infos.op = 'end';
+				console.log("End of download");
+				
+				fractalManager.saveChunk(chunk);
+				chunk = null;
+				
+				pollJob();
+			} else {
+				infos.op = 'null';
+				console.log("Unrecognised opcode : "+opcode);
+			}
+		}
+		
+		function writeImageData(data, sourceStart){
+			if(typeof(sourceStart) == 'undefined') sourceStart = 0;
+			var sourceEnd;
+			
+			if(currentLength + data.length - sourceStart >= infos.length){
+				sourceEnd = infos.length - currentLength + sourceStart;
+			}
+			
+			data.copy(chunk.images[infos.z][infos.x][infos.y], currentLength, sourceStart, sourceEnd);
+	
+			currentLength += data.length - sourceStart;
+			
+			if(currentLength >= infos.length){
+				infos.length = 0;
 				currentLength = 0;
 				
-				imageCount ++;
-				if(imageCount == fractalManager.IMG_PER_CHUNK){
-					console.log("End of download");
-					imageCount = 0;
-					fractalManager.saveChunk(chunk);
-					chunk = null;
+				if(sourceEnd < data.length){
+					onHeaderData(data, sourceEnd);
+				}
+			}
+		}
+		
+		function onHeaderData(data, start){
+			if(typeof(start) == 'undefined') start = 0;
+			
+			//Header has not been completely received
+			if(data.length + headerCount - start < HEADER_SIZE){
+				data.copy(bufferedHeader, headerCount);
+				headerCount += data.length - start;
+			} 
+			//Header has been received but in multiple parts
+			else if(headerCount != 0) {
+				var bufEnd = start + HEADER_SIZE - headerCount;
+				
+				data.copy(bufferedHeader, headerCount, start, bufEnd);	
+				headerCount = 0;
+				
+				readHeader(bufferedHeader, start);
+				
+				if(infos.op == 'img'){
+					chunk.images[infos.z][infos.x][infos.y] = new Buffer(infos.length);
 					
-					pollJob();
-				} else {
-					if(imageCount == 1)
-						console.log("Receiving images");
+					if(data.length > bufEnd){
+						writeImageData(data, bufEnd);
+					}
+				}
+			} 
+			//Header is received all at once
+			else {
+				
+				readHeader(data, start);
+				
+				if(infos.op == 'img'){
+					chunk.images[infos.z][infos.x][infos.y] = new Buffer(infos.length);
+					
+					if(data.length > start + HEADER_SIZE){
+						writeImageData(data, start + HEADER_SIZE);
+					}
 				}
 			}
 		}
@@ -87,32 +163,12 @@ module.exports = function(fractalManager){
 		sock.on('data', function(data) {
 			
 			if(chunk !== null){
-				if(outputLength == 0){
+				if(infos.length == 0){
 					
-					//Receiving image header (size)
-					if(data.length+headerCount < 4){
-						data.copy(bufferedHeader, headerCount);
-						headerCount += data.length;
-					} else if(headerCount != 0){
-						data.copy(bufferedHeader, headerCount, 0, 4-headerCount);
-						
-						outputLength = bufferedHeader.readInt32BE(0);
-						chunk.images[imageCount] = new Buffer(outputLength);
-						
-						writeData(data, 4-headerCount);
-						
-						headerCount = 0;
-					} 
-					//receiving image data
-					else {
-						
-						outputLength = data.readInt32BE(0);
-						chunk.images[imageCount] = new Buffer(outputLength);
-						
-						writeData(data, 4);
-					}
+					onHeaderData(data);
+					
 				} else {					
-					writeData(data);
+					writeImageData(data, 0);
 				}
 				
 			} else {

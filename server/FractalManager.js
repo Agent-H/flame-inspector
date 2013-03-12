@@ -8,11 +8,21 @@ var Manager = function(){
 	
 	var CHUNK_SIZE = this.CHUNK_SIZE = 4096;
 	var IMG_PER_CHUNK_ROW = this.IMG_PER_CHUNK_ROW = 16;
-	var IMG_PER_CHUNK = this.IMG_PER_CHUNK = IMG_PER_CHUNK_ROW*IMG_PER_CHUNK_ROW;
+	var ZOOM_PER_CHUNK = Math.log(IMG_PER_CHUNK_ROW)/Math.log(2) +1;
+	var IMG_PER_CHUNK = Math.floor(IMG_PER_CHUNK_ROW * IMG_PER_CHUNK_ROW * (1-Math.pow(4, ZOOM_PER_CHUNK))/(1-4)/Math.pow(4, ZOOM_PER_CHUNK-1));
 	
+	console.log("IMG_PER_CHUNK : "+IMG_PER_CHUNK);
 	var DATA_DIR = "../www/data/";
 	
-	var fractal = this.fractal = new Fractal(2, 20000);
+	var fractal = this.fractal = new Fractal(2, 2000);
+	
+	var imgPerChunkLevel = this.imgPerChunkLevel = function(l){
+		return Math.floor(IMG_PER_CHUNK_ROW*IMG_PER_CHUNK_ROW/Math.pow(4, l));
+	}
+	
+	var imgPerChunkLevelRow = this.imgPerChunkLevelRow = function(l){
+		return Math.floor(IMG_PER_CHUNK_ROW / Math.pow(2, l));
+	}
 	
 	/*
 	fractal.addTransform(
@@ -96,6 +106,16 @@ var Manager = function(){
 				var x = i%divisions.x;
 				var y = Math.floor(i/divisions.x);
 				
+				var images = new Array(ZOOM_PER_CHUNK);
+				
+				for(var z = 0 ; z < ZOOM_PER_CHUNK ; z++){
+					var nbImg = imgPerChunkLevelRow(z);
+					images[z] = new Array(nbImg);
+					for(var j = 0 ; j < nbImg ; j++){
+						images[z][j] = new Array(nbImg);
+					}
+				}
+				
 				return {
 					id: i,
 					width: chunkWidth,
@@ -104,7 +124,7 @@ var Manager = function(){
 					y: y*chunkHeight + viewport.centerY - viewport.height/2,
 					chunkX: x,
 					chunkY: y,
-					images: new Array(IMG_PER_CHUNK)
+					images: images
 				};
 			}
 		}
@@ -127,32 +147,41 @@ var Manager = function(){
 	}
 	
 	this.saveChunk = function(chunk){
-		var x = chunk.chunkX;
-		var y = chunk.chunkY;
 		
-		function saveImage(id){
-			fs.writeFile(DATA_DIR+_this.fractal.getId()+"/0-"
-				+(x*IMG_PER_CHUNK_ROW + id % IMG_PER_CHUNK_ROW)+"-"
-				+ (y*IMG_PER_CHUNK_ROW + IMG_PER_CHUNK_ROW - 1 - Math.floor(id / IMG_PER_CHUNK_ROW))
-				+".png", chunk.images[id], function(err){
+		console.log("saving chunk : "+chunk.chunkX+" "+chunk.chunkY);
+		
+		function saveImage(x, y, z){
+		
+			if(typeof(chunk.images[z][x][y]) === 'undefined'){
+				console.log("Aborting save on image : "+x+" "+y+" "+z);
+				console.log("img/chunklvl (z = "+z+") : "+imgPerChunkLevelRow(z));
+				return;
+			}
+			
+			fs.writeFile(DATA_DIR+_this.fractal.getId()+"/"+z+"-"+(x + chunk.chunkX*imgPerChunkLevelRow(z))+"-"+((chunk.chunkY+1)*imgPerChunkLevelRow(z) - y -1)+".jpg", chunk.images[z][x][y], function(err){
 				if(err){
 					console.log("an error has occured : ");
 					console.log(err);
 					//En cas d'erreur, on libère le chunk pour être recalculé
 					unlockChunk(chunk);
 				} else {
-					if(id < IMG_PER_CHUNK-1)
-						saveImage(id+1);
-					else
-						console.log("Data successfully saved");
+					if(++y >= imgPerChunkLevelRow(z)){
+						y = 0;
+						if(++x >= imgPerChunkLevelRow(z)){
+							x = 0;
+							if(++z >= ZOOM_PER_CHUNK){
+								console.log("Data successfully saved");
+								return;
+							}
+						}
+					}
+					saveImage(x, y, z);
 				}
 			});
 		}
 		
-		saveImage(0);
-		
+		saveImage(0,0,0);
 	}
-	
 	
 	
 	/* Stores which chunk have already been computed */
@@ -182,25 +211,33 @@ var Manager = function(){
 		} else {
 			
 			// Recence les images présentes
-			var images = new Array(chunksCount*IMG_PER_CHUNK);
+			var images = new Array(ZOOM_PER_CHUNK);
+			for(var z = 0 ; z < ZOOM_PER_CHUNK ; z++){
+				images[z] = new Array(chunksCount*imgPerChunkLevel(z));
+			}
 			
 			for(var i = 0 ; i < files.length ; i++){
 				
-				var infos = files[i].replace(/0-([0-9]+)-([0-9]+)\.png/, '$1 $2').split(' ');
-				var x = parseInt(infos[0]);
-				var y = parseInt(infos[1]);
+				var infos = files[i].replace(/([0-9]+)-([0-9]+)-([0-9]+)\.jpg/, '$1 $2 $3').split(' ');
+				var x = parseInt(infos[1]);
+				var y = parseInt(infos[2]);
+				var z = parseInt(infos[0]);
 				
-				images[Math.floor(x/IMG_PER_CHUNK_ROW)*IMG_PER_CHUNK + y * IMG_PER_CHUNK_ROW + x % IMG_PER_CHUNK_ROW] = true;
+				images[z][x + y * imgPerChunkLevelRow(z)] = true;
 			}
 			
 			for(var i = 0 ; i < chunksCount ; i++){
 				if(
 					(function(i){
 						var count = 0;
-						for(var j = 0 ; j < IMG_PER_CHUNK ; j++){
-							if(images[i*IMG_PER_CHUNK+j] === true)
-								count ++;
+						
+						for(var z = 0 ; z < ZOOM_PER_CHUNK ; z++){
+							for(var j = 0 ; j < imgPerChunkLevel(z) ; j++){
+								if(images[z][i*imgPerChunkLevel(z)+j] === true)
+									count ++;
+							}
 						}
+						
 						console.log("Chunk "+i+" Image count : "+count);
 						return count != IMG_PER_CHUNK;
 					})(i)

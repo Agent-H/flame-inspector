@@ -45,7 +45,7 @@
 				function loadTile(x, y, z){
 					
 					var img = new Image();
-					img.src = "data/"+FRACTAL_ID+"/"+z+"-"+x+"-"+(CHUNK_COUNT-1-y)+".png";
+					img.src = "data/"+FRACTAL_ID+"/"+z+"-"+x+"-"+(CHUNK_COUNT-1-y)+".jpg";
 					
 					return $(img).width(256).height(256).addClass("tile");
 				}
@@ -65,7 +65,7 @@
 						for(var j = 0 ; j <= Math.floor(viewport.h / TILE_SIZE) +3 ; j++){
 							var tY = offset.top + j;
 							
-							tiles[i][j] = loadTile(tX, tY, 0);
+							tiles[i][j] = loadTile(tX, tY, zoomLevel);
 							
 							viewer.append(tiles[i][j]);
 						}
@@ -95,10 +95,10 @@
 					var col = new Array();
 					
 					for(var i = 0 ; i < tiles[0].length ; i++){
-						col.push(loadTile(offset.left + pos, offset.top + i, 0).appendTo(viewer));
+						col.push(loadTile(offset.left + pos, offset.top + i, zoomLevel).appendTo(viewer));
 					}
 					
-					tiles.splice(pos, 0, col);
+					tiles.splice(pos, zoomLevel, col);
 				}
 				
 				function removeColumn(pos){
@@ -118,7 +118,7 @@
 				
 				function loadLine(pos){
 					for(var i = 0 ; i < tiles.length ; i++){
-						tiles[i].splice(pos, 0, loadTile(offset.left + i, offset.top + pos, 0).appendTo(viewer));
+						tiles[i].splice(pos, 0, loadTile(offset.left + i, offset.top + pos, zoomLevel).appendTo(viewer));
 					}
 				}
 				
@@ -168,6 +168,27 @@
 			
 			$(window).keydown(function(evt){
 				switch(evt.which){
+					case 65:
+						console.log("zoom out");
+						// ZOOM out
+						zoomLevel ++;
+						viewport.x /= 2;
+						viewport.y /= 2;
+						map.init();
+						
+						
+						break;
+					case 69:
+						console.log("zoom in");
+						
+						// ZOOM ini
+						zoomLevel --;
+						viewport.x *= 2;
+						viewport.y *= 2;
+						map.init();
+						
+						
+						break;
 					case 37:
 						if(moveX > -10) moveX --;
 						break;
@@ -180,6 +201,7 @@
 					case 40:
 						if(moveY > -10) moveY --;
 						break;
+					
 				}
 			}).keyup(function(evt){
 				if(evt.which == 37 && moveX < 0) moveX = 0;
