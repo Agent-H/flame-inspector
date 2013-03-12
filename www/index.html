@@ -18,9 +18,13 @@
 			
 			var TILE_SIZE = 256;
 			var TILE_PER_CHUNK = 16;
-			var CHUNK_COUNT = 64;
+			var CHUNK_COUNT = 5;
 			
-			var FRACTAL_ID = 2;
+			var imgPerChunkLevelRow = function(l){
+				return Math.floor(TILE_PER_CHUNK / Math.pow(2, l));
+			}
+			
+			var FRACTAL_ID = 0;
 			
 			var zoomLevel = 0;
 			
@@ -43,12 +47,23 @@
 				};
 				
 				function loadTile(x, y, z){
-					
+					console.log("loading tile : ("+x+", "+y+")");
 					var img = new Image();
-					img.src = "data/"+FRACTAL_ID+"/"+z+"-"+x+"-"+(CHUNK_COUNT-1-y)+".jpg";
+					img.src = "data/"+FRACTAL_ID+"/"+z+"-"+x+"-"+(CHUNK_COUNT*imgPerChunkLevelRow(zoomLevel) - y)+".jpg";
 					
 					return $(img).width(256).height(256).addClass("tile");
 				}
+				
+				this.reset = function(viewport){
+					
+					for(var i = 0 ; i < tiles.length ; i++){
+						for(var j = 0 ; j < tiles[i].length ; j++){
+							tiles[i][j].detach();
+						}
+					}
+					
+					this.init(viewport);
+				};
 				
 				this.init = function(viewport){
 				
@@ -75,7 +90,6 @@
 				};
 				
 				this.move = function(viewport){
-					
 					checkStreamming(viewport);
 					
 					var startX = (Math.floor(viewport.x / TILE_SIZE) - offset.left);
@@ -98,7 +112,7 @@
 						col.push(loadTile(offset.left + pos, offset.top + i, zoomLevel).appendTo(viewer));
 					}
 					
-					tiles.splice(pos, zoomLevel, col);
+					tiles.splice(pos, 0, col);
 				}
 				
 				function removeColumn(pos){
@@ -174,18 +188,19 @@
 						zoomLevel ++;
 						viewport.x /= 2;
 						viewport.y /= 2;
-						map.init();
+						console.log("x:  "+viewport.x+", y: "+viewport.y);
+						map.reset(viewport);
 						
 						
 						break;
 					case 69:
 						console.log("zoom in");
 						
-						// ZOOM ini
+						// ZOOM in
 						zoomLevel --;
 						viewport.x *= 2;
 						viewport.y *= 2;
-						map.init();
+						map.reset(viewport);
 						
 						
 						break;
@@ -208,14 +223,39 @@
 				else if(evt.which == 39 && moveX > 0) moveX = 0;
 				if(evt.which == 38 && moveY > 0) moveY = 0;
 				if(evt.which == 40 && moveY < 0) moveY = 0;
+			}).mousedown(function(evt){
+				evt.preventDefault();
+				
+				var px = evt.pageX;
+				var py = evt.pageY;
+				$(window).mousemove(function(evt){
+					viewport.x += px - evt.pageX;
+					viewport.y += py - evt.pageY;
+					
+					px = evt.pageX;
+					py = evt.pageY;
+					
+					checkViewport();
+				}).mouseup(function(evt){
+					$(window).unbind('mouseup mousemove');
+				});
 			});
+			
+			function checkViewport(){
+				if(viewport.x < 0)
+					viewport.x = 0;
+				if(viewport.y < 0)
+					viewport.y = 0;
+				
+				map.move(viewport);
+			}
 			
 			window.setInterval(function(){
 				viewport.x += moveX
 				viewport.y += moveY;
 				
 				if(moveX != 0 || moveY != 0)
-					map.move(viewport);
+					checkViewport();
 			}, 30);
 			
 			map.init(viewport);

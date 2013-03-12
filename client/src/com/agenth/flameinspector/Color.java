@@ -22,6 +22,12 @@ public class Color {
 		m_b = b;
 	}
 	
+	public void mult(double f){
+		m_r = (m_r*f > 1) ? 1 : m_r*f;
+		m_g = (m_g*f > 1) ? 1 : m_g*f;
+		m_b = (m_b*f > 1) ? 1 : m_b*f;
+	}
+	
 	public double red(){
 		return m_r;
 	}

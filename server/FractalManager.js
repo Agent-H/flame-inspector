@@ -14,7 +14,7 @@ var Manager = function(){
 	console.log("IMG_PER_CHUNK : "+IMG_PER_CHUNK);
 	var DATA_DIR = "../www/data/";
 	
-	var fractal = this.fractal = new Fractal(2, 2000);
+	var fractal = this.fractal = new Fractal(0, 200000);
 	
 	var imgPerChunkLevel = this.imgPerChunkLevel = function(l){
 		return Math.floor(IMG_PER_CHUNK_ROW*IMG_PER_CHUNK_ROW/Math.pow(4, l));
@@ -51,29 +51,29 @@ var Manager = function(){
 	};*/
 	
 	fractal.addTransform(
-			[-0.4113504, -0.7124804, -0.4, 0.7124795, -0.4113508, 0.8],
-    		[1, 0.1, 0.1, 0, 0, 0],
+			[0.7124807, -0.4113509, -0.3, 0.4113513, 0.7124808, -0.7],
+    		[0.5, 0, 0.2, 0.4, 0.8, 0],
 			0 );
 	
     fractal.addTransform(
-			[-0.3957339, 0.12, -1.6, 0.12, -0.3957337, 0.2],
-    		[0.1, 0, 0, 0, 0.8, 1],
-			1 );
-    fractal.addTransform(
-			[0.4810169, 0, 1, 0.456, 0.4810169, 0.9],
-    		[1, 0, 0, 0.3, 0, 0],
+			[0.3731078, -0.64624117, 0.4, 0.6462414, 0.3731076, 0.3],
+    		[1, 0, 0.1, 0, 0, 0],
 			0.5 );
+    fractal.addTransform(
+			[0.0842641, -0.314478, -0.1, 0.314478, 0.0842641, 0.3],
+    		[1, 0, 0, 0, 0, 0],
+			1 );
     
 	var viewport = {
-		width: 3,
-		height: 3,
+		width: 5,
+		height: 5,
 		centerX: 0.1,
 		centerY: 0.1
 	};
 	
 	var divisions = {
-		x: 4,
-		y: 4
+		x: 5,
+		y: 5
 	};
 	
 	var chunkWidth = viewport.width/divisions.x;

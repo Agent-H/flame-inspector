@@ -27,7 +27,10 @@ import com.nativelibs4java.opencl.JavaCL;
 import com.nativelibs4java.util.IOUtils;
 
 public class Worker {
-	
+	public static double intensity = 2.0/4;
+	public static double spec = 1.0005;
+	public static double saturation = 0.25;
+    
 	public static BufferedImage compute(Fractal fractal, int density) throws IOException{
 		CLContext context = JavaCL.createBestContext();
         CLQueue queue = context.createDefaultQueue();
@@ -120,19 +123,21 @@ public class Worker {
 		int[] imgbytes = new int[Config.CHUNK_WIDTH*Config.CHUNK_HEIGHT];
 		
 		List<Color> c = new ArrayList<Color>();
-		c.add(new Color(1, 0, 0.513725));
 		c.add(new Color(0.047058, 0.815683, 0.968627));
-		c.add(new Color(0, 1, 0.227451));
-		c.add(new Color(0.874509, 1, 0));
-		c.add(new Color(1, 0.584313, 0));
+		c.add(new Color(0.01, 1, 0.227451));
+		c.add(new Color(0.874509, 1, 0.01));
+		c.add(new Color(1, 0.584313, 0.01));
+		c.add(new Color(1, 0.01, 0.513725));
 		Palette palette = new InterpolatedPalette(c);
 		
 		Color colorMix = new Color(0,0,0);
 		
 		for(int i = 0 ; i < Config.CHUNK_WIDTH*Config.CHUNK_HEIGHT ; i++){
+			double val = intensitiesPtr.get(i)/2147483647.0;
 			
 			palette.setColorForIndex(colorMix, mapPtr.get(i)/127.0);
-			imgbytes[i] = colorMix.setMix(colorMix, Color.BLACK, intensitiesPtr.get(i)/2147483647.0).asPackedRGB();
+			colorMix.mult((val < 1-saturation) ? val/(spec-val/(1- saturation))*intensity : 1000);
+			imgbytes[i] = colorMix.asPackedRGB();
 		}
 		
 		intensitiesPtr.release();
